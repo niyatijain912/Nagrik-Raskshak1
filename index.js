@@ -1,7 +1,7 @@
 /* ================= CONFIGURATION ================= */
 
 // 👇 PASTE YOUR RENDER URL HERE (No trailing slash)
-const API_BASE_URL = "https://nagrik-raskshak.onrender.com";
+const API_BASE_URL = "https://nagrik-raskshak1.onrender.com";
 
 // Use this one if you are testing locally on your laptop:
 // const API_BASE_URL = "http://localhost:3000"; 
@@ -377,3 +377,4 @@ style.textContent = `
   .status-badge.resolved { background: #4caf50; color: white; }
 `;
 document.head.appendChild(style);
+
