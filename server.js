@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const admin = require("firebase-admin");
 const multer = require("multer");
-const fetch = require("node-fetch"); // Ensure you install version 2: npm install node-fetch@2
+const fetch = require("node-fetch"); // Ensure you installed version 2: npm install node-fetch@2
 
 const app = express();
 app.use(cors());
@@ -12,12 +12,17 @@ app.use(express.json());
 const upload = multer({ dest: "uploads/" });
 app.use("/uploads", express.static("uploads"));
 
-// --- FIREBASE INITIALIZATION ---
-// Ensure serviceAccountKey.json is in the same folder
-const serviceAccount = require("./serviceAccountKey.json");
-
+// --- FIREBASE INITIALIZATION (NUCLEAR FIX) ---
+// We no longer require the JSON file. We read keys from Render settings.
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    // This replace function is CRITICAL to make the key work on Render
+    privateKey: process.env.FIREBASE_PRIVATE_KEY 
+      ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') 
+      : undefined
+  }),
 });
 
 const db = admin.firestore();
@@ -64,8 +69,8 @@ app.post("/register", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: "Register failed" });
+    console.error("Detailed Error:", err);
+    res.status(500).json({ success: false, message: "Register failed", error: err.message });
   }
 });
 
@@ -366,8 +371,7 @@ app.post("/bot-query", (req, res) => {
   }
 
   const text = message.toLowerCase();
-  const words = text.replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2);
-
+  
   let bestMatch = null;
   let bestScore = 0;
 
