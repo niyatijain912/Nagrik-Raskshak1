@@ -12,17 +12,23 @@ app.use(express.json());
 const upload = multer({ dest: "uploads/" });
 app.use("/uploads", express.static("uploads"));
 
-// --- FIREBASE INITIALIZATION (NUCLEAR FIX) ---
-// We no longer require the JSON file. We read keys from Render settings.
+// --- FIREBASE INITIALIZATION (FAIL-PROOF METHOD) ---
+// We parse the entire JSON string. This prevents format/newline errors.
+let serviceAccount;
+try {
+  // If we are on Render, read the single environment variable
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } else {
+    // Local fallback (if you ever run it on your laptop)
+    serviceAccount = require("./serviceAccountKey.json");
+  }
+} catch (error) {
+  console.error("Error parsing credentials:", error);
+}
+
 admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    // This replace function is CRITICAL to make the key work on Render
-    privateKey: process.env.FIREBASE_PRIVATE_KEY 
-      ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') 
-      : undefined
-  }),
+  credential: admin.credential.cert(serviceAccount),
 });
 
 const db = admin.firestore();
@@ -498,3 +504,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
