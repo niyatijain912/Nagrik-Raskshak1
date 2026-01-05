@@ -1,3 +1,13 @@
+/* ================= CONFIGURATION ================= */
+
+// 👇 PASTE YOUR RENDER URL HERE (No trailing slash)
+const API_BASE_URL = "https://nagrik-raskshak.onrender.com";
+
+// Use this one if you are testing locally on your laptop:
+// const API_BASE_URL = "http://localhost:3000"; 
+
+
+/* ================= USER STATE ================= */
 const user = JSON.parse(localStorage.getItem("user"));
 let selectedDepartment = "All";
 
@@ -8,6 +18,7 @@ if (!user) {
 
 // ================= MAP INIT =================
 const map = L.map("map").setView([26.7606, 83.3732], 13);
+
 function addComplaintMarker(c) {
   if (!c.location || !c.location._latitude || !c.location._longitude) return;
 
@@ -49,11 +60,12 @@ let allComplaints = [];
 
 async function loadComplaints() {
   try {
-    // 🔥 MAP CLEAR (department change par)
+    // 🔥 MAP CLEAR
     markers.forEach((m) => map.removeLayer(m));
     markers = [];
 
-    const res = await fetch("http://localhost:3000/complaints");
+    // UPDATED: Uses API_BASE_URL
+    const res = await fetch(`${API_BASE_URL}/complaints`);
     const complaints = await res.json();
     allComplaints = complaints;
 
@@ -68,104 +80,66 @@ async function loadComplaints() {
     mediumBox.innerHTML = "";
     lowBox.innerHTML = "";
 
-    // markers.forEach((m) => map.removeLayer(m));
-    // markers = [];
-
     complaints.forEach((c, index) => {
       // ⛔ Department filter
       if (selectedDepartment !== "All" && c.department !== selectedDepartment) {
         return;
       }
       addComplaintMarker(c);
-      
-
-      /* ================= MAP ================= */
-      // if (c.location?.latitude && c.location?.longitude) {
-      //   const marker = L.marker([
-      //     c.location.latitude,
-      //     c.location.longitude,
-      //   ]).addTo(map);
-
-      //   marker.bindPopup(`
-      //     <b>${c.description}</b><br>
-      //     📍 ${c.address || "Unknown"}<br>
-      //     ⏰ Time: ${c.timePassed}<br>
-      //     📊 Status: ${c.status}<br>
-      //     ${c.isOverdue ? '⚠️ <b style="color:red">OVERDUE!</b>' : ''}
-      //   `);
-
-      //   markers.push(marker);
-      // }
 
       const priority = c.priority || "Low";
       const status = c.status || "new";
       const isOverdue = c.isOverdue || false;
 
+      // UPDATED: Image Source uses API_BASE_URL
+      const imageHTML = c.imagePath
+        ? `
+        <div class="img-wrap">
+          <img src="${API_BASE_URL}/${c.imagePath}"
+               onclick="openImage(this.src)">
+        </div>
+      `
+        : "";
+
       if (index < 3) {
         const card = document.createElement("div");
-        card.className = `card ${priority.toLowerCase()} ${isOverdue ? "overdue" : ""
-          }`;
+        card.className = `card ${priority.toLowerCase()} ${isOverdue ? "overdue" : ""}`;
 
         card.innerHTML = `
-  <!-- PRIORITY LINE -->
-  <div class="priority ${priority.toLowerCase()}">
-    ${priority} Priority
-    ${isOverdue ? " ⚠️ OVERDUE" : ""}
-  </div>
+          <div class="priority ${priority.toLowerCase()}">
+            ${priority} Priority
+            ${isOverdue ? " ⚠️ OVERDUE" : ""}
+          </div>
 
-  <!-- IMAGE -->
-  ${c.imagePath
-            ? `
-    <div class="img-wrap">
-      <img src="http://localhost:3000/${c.imagePath}"
-           onclick="openImage(this.src)">
-    </div>
-  `
-            : ""
-          }
+          ${imageHTML}
 
-  <!-- TEXT -->
-  <b>${c.description.substring(0, 60)}${c.description.length > 60 ? "..." : ""
-          }</b><br>
-  <small>📍 ${c.address || "Unknown"}</small><br>
-  <small>📊 Status: <span class="status-badge ${status}">${status}</span></small><br>
-  <small>⏰ ${c.timePassed} ago</small><br>
-  
-  <!-- ACTION BUTTONS -->
-  <div class="action-buttons" data-id="${c.id}">
-    ${status === "classified"
-            ? `
-      <button class="action-btn mark-action" onclick="updateStatus('${c.id}', 'under_action')">
-        ⚡ Take Action
-      </button>
-    `
-            : ""
-          }
-    
-    ${status === "under_action"
-            ? `
-      <button class="action-btn mark-resolved" onclick="updateStatus('${c.id}', 'resolved')">
-        ✅ Mark Resolved
-      </button>
-    `
-            : ""
-          }
-    
-    ${status === "resolved"
-            ? `
-      <span class="resolved-badge">✅ Resolved</span>
-    `
-            : ""
-          }
-    
-    ${status === "new"
-            ? `
-      <span class="status-badge new">Awaiting Classification</span>
-    `
-            : ""
-          }
-  </div>
-`;
+          <b>${c.description.substring(0, 60)}${c.description.length > 60 ? "..." : ""}</b><br>
+          <small>📍 ${c.address || "Unknown"}</small><br>
+          <small>📊 Status: <span class="status-badge ${status}">${status}</span></small><br>
+          <small>⏰ ${c.timePassed} ago</small><br>
+          
+          <div class="action-buttons" data-id="${c.id}">
+            ${status === "classified"
+                ? `<button class="action-btn mark-action" onclick="updateStatus('${c.id}', 'under_action')">
+                    ⚡ Take Action
+                   </button>`
+                : ""}
+            
+            ${status === "under_action"
+                ? `<button class="action-btn mark-resolved" onclick="updateStatus('${c.id}', 'resolved')">
+                    ✅ Mark Resolved
+                   </button>`
+                : ""}
+            
+            ${status === "resolved"
+                ? `<span class="resolved-badge">✅ Resolved</span>`
+                : ""}
+            
+            ${status === "new"
+                ? `<span class="status-badge new">Awaiting Classification</span>`
+                : ""}
+          </div>
+        `;
 
         recentContainer.appendChild(card);
       }
@@ -175,52 +149,38 @@ async function loadComplaints() {
       item.className = `risk-item ${isOverdue ? "overdue" : ""}`;
 
       item.innerHTML = `
-  <span class="priority ${priority.toLowerCase()}">
-    ${priority} Priority
-    ${isOverdue ? " ⚠️ OVERDUE" : ""}
-  </span>
+        <span class="priority ${priority.toLowerCase()}">
+          ${priority} Priority
+          ${isOverdue ? " ⚠️ OVERDUE" : ""}
+        </span>
 
-  <p class="desc">${c.description.substring(0, 80)}${c.description.length > 80 ? "..." : ""
-        }</p>
-  <small>📍 ${c.address || "Unknown"}</small><br>
-  <small>📊 Status: <span class="status-badge ${status}">${status}</span></small><br>
-  <small>⏰ ${c.timePassed} ago</small>
-  
-  <!-- ACTION BUTTONS FOR LIST VIEW -->
-  <div class="action-buttons" data-id="${c.id}">
-    ${status === "classified"
-          ? `
-      <button class="action-btn mark-action" onclick="updateStatus('${c.id}', 'under_action')">
-        ⚡ Take Action
-      </button>
-    `
-          : ""
-        }
-    
-    ${status === "under_action"
-          ? `
-      <button class="action-btn mark-resolved" onclick="updateStatus('${c.id}', 'resolved')">
-        ✅ Mark Resolved
-      </button>
-    `
-          : ""
-        }
-    
-    ${status === "resolved"
-          ? `
-      <span class="resolved-badge">✅ Resolved</span>
-    `
-          : ""
-        }
-    
-    ${status === "new"
-          ? `
-      <span class="status-badge new">Awaiting Classification</span>
-    `
-          : ""
-        }
-  </div>
-`;
+        <p class="desc">${c.description.substring(0, 80)}${c.description.length > 80 ? "..." : ""}</p>
+        <small>📍 ${c.address || "Unknown"}</small><br>
+        <small>📊 Status: <span class="status-badge ${status}">${status}</span></small><br>
+        <small>⏰ ${c.timePassed} ago</small>
+        
+        <div class="action-buttons" data-id="${c.id}">
+          ${status === "classified"
+              ? `<button class="action-btn mark-action" onclick="updateStatus('${c.id}', 'under_action')">
+                  ⚡ Take Action
+                 </button>`
+              : ""}
+          
+          ${status === "under_action"
+              ? `<button class="action-btn mark-resolved" onclick="updateStatus('${c.id}', 'resolved')">
+                  ✅ Mark Resolved
+                 </button>`
+              : ""}
+          
+          ${status === "resolved"
+              ? `<span class="resolved-badge">✅ Resolved</span>`
+              : ""}
+          
+          ${status === "new"
+              ? `<span class="status-badge new">Awaiting Classification</span>`
+              : ""}
+        </div>
+      `;
 
       if (priority === "High") {
         highBox.appendChild(item);
@@ -230,10 +190,11 @@ async function loadComplaints() {
         lowBox.appendChild(item);
       }
     });
+
     if (markers.length > 0) {
-        const group = L.featureGroup(markers);
-        map.fitBounds(group.getBounds(), { padding: [40, 40] });
-      }
+      const group = L.featureGroup(markers);
+      map.fitBounds(group.getBounds(), { padding: [40, 40] });
+    }
 
     // Apply overdue styling to body if any complaint is overdue
     const hasOverdue = complaints.some((c) => c.isOverdue);
@@ -250,7 +211,8 @@ async function updateStatus(complaintId, newStatus) {
   if (!confirm(`Change status to "${newStatus}"?`)) return;
 
   try {
-    const res = await fetch("http://localhost:3000/update-complaint-status", {
+    // UPDATED: Uses API_BASE_URL
+    const res = await fetch(`${API_BASE_URL}/update-complaint-status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -309,7 +271,6 @@ let liveLocationMarker = null;
 let liveAccuracyCircle = null;
 let liveLocationCentered = false;
 
-
 function showLiveLocation() {
   if (!navigator.geolocation) return;
 
@@ -329,13 +290,10 @@ function showLiveLocation() {
       fillOpacity: 0.15,
     }).addTo(map);
 
-    // map.setView([latitude, longitude], 16);
     if (!liveLocationCentered) {
-  map.setView([latitude, longitude], 16);
-  liveLocationCentered = true;
-}
-
-    
+      map.setView([latitude, longitude], 16);
+      liveLocationCentered = true;
+    }
   });
 }
 
